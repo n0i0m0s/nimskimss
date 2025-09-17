@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Treasure Hunt — Riddle Edition</title>
+  <style>
+    :root{--size:60px}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#eef6f9;margin:0;padding:20px}
+    .container{background:white;padding:18px;border-radius:12px;box-shadow:0 8px 24px rgba(20,30,40,0.12);max-width:900px;width:100%}
+    h1{font-size:20px;margin:0 0 8px}
+    p{margin:6px 0;color:#334}
+    .layout{display:grid;grid-template-columns:320px 1fr;gap:14px}
+    .panel{padding:12px;border-radius:10px;background:#fbfeff;border:1px solid #e6f7f7}
+    .riddles{display:flex;flex-direction:column;gap:8px}
+    .riddle{padding:8px;border-radius:8px;background:#fff;border:1px solid #e6eef2}
+    .riddle.solved{background:#e6ffef;border-color:#b7f0d1}
+    .grid{display:grid;grid-template-columns:repeat(5,var(--size));gap:6px;margin:12px 0}
+    .cell{width:var(--size);height:var(--size);display:flex;align-items:center;justify-content:center;background:#dff3ea;border-radius:8px;border:2px solid rgba(0,0,0,0.06);cursor:not-allowed;user-select:none;font-weight:700}
+    .cell.active{cursor:pointer;background:#f0f9ff}
+    .cell.revealed{background:#fff;border-style:solid;cursor:default}
+    .cell.treasure{background:linear-gradient(135deg,#ffd97a,#ffb74d);font-size:22px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#2563eb;color:white;cursor:pointer}
+    button.secondary{background:#6b7280}
+    .status{margin-top:10px;padding:10px;background:#f7fdfd;border-radius:8px;border:1px solid #e6f7f7}
+    .hint{margin-top:8px;font-weight:600}
+    .small{font-size:13px;color:#475569}
+    footer{margin-top:12px;font-size:12px;color:#6b7280}
+    input[type=text]{width:100%;padding:6px;border-radius:6px;border:1px solid #cbd5e1}
+    .row{display:flex;gap:8px}
+    .chat-history{margin-top:12px;padding:10px;background:#f1f5f9;border-radius:8px;border:1px solid #cbd5e1;word-break:break-word;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏴‍☠️ Treasure Hunt — Riddle Edition</h1>
+    <p class="small">Solve any 5 out of 6 riddles to unlock the island. Once the riddles are solved, the treasure will be hidden — dig by clicking squares to find it. Win condition: solve at least 5 riddles and then find the treasure.</p>
+
+    <div class="layout">
+      <div class="panel">
+        <h2 style="margin:0 0 8px;font-size:16px">Riddles (6)</h2>
+        <div id="riddleList" class="riddles"></div>
+        <div class="controls">
+          <button id="resetRiddles">Reset Riddles</button>
+          <button id="autoSolve" class="secondary">Show Answers (for testing)</button>
+        </div>
+        <div class="status" id="riddleStatus">Solved: <span id="solvedCount">0</span>/6</div>
+      </div>
+
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong>Island Grid</strong>
+            <div class="small">Grid locked until at least 5 riddles are solved.</div>
+          </div>
+          <div class="small">Attempts: <span id="attempts">0</span></div>
+        </div>
+
+        <div id="grid" class="grid" aria-label="Treasure grid"></div>
+        <div class="hint" id="hint">Hint: —</div>
+        <div class="controls" style="margin-top:10px">
+          <button id="newGame" class="secondary">New Game (resets everything)</button>
+          <button id="revealBtn" class="secondary">Reveal Treasure</button>
+        </div>
+        <div class="status" id="gameStatus" style="margin-top:10px">Game locked until at least 5 riddles are solved.</div>
+        <div class="chat-history">AI Chat History: <a href="https://chatgpt.com/share/68ca9eba-4f34-800c-866d-c8dadb8fde6a" target="_blank">Open AI Chat History</a></div>
+      </div>
+    </div>
+
+    <footer>Win condition: Solve at least 5 riddles, then find the treasure. ✅</footer>
+  </div>
+
+  <script>
+    (function(){
+      const riddles = [
+        {q: "What has to be broken before you can use it?", a: ['egg','an egg']},
+        {q: "I\u2019m tall when I\u2019m young, and I\u2019m short when I\u2019m old. What am I?", a: ['candle','a candle']},
+        {q: "What month of the year has 28 days?", a: ['all of them','every month']},
+        {q: "What is full of holes but still holds water?", a: ['sponge','a sponge']},
+        {q: "What question can you never answer yes to?", a: ['are you asleep yet','are you sleeping']},
+        {q: "What is always in front of you but can\'t be seen?", a: ['the future','future']}
+      ];
+
+      let size = 5;
+      let solved = 0;
+      let attempts = 0;
+      let treasure = {x:0,y:0};
+      let finished = false;
+      let unlocked = false;
+
+      const gridEl = document.getElementById('grid');
+      const riddleListEl = document.getElementById('riddleList');
+      const solvedCountEl = document.getElementById('solvedCount');
+      const attemptsEl = document.getElementById('attempts');
+      const hintEl = document.getElementById('hint');
+      const newGameBtn = document.getElementById('newGame');
+      const revealBtn = document.getElementById('revealBtn');
+      const resetRiddlesBtn = document.getElementById('resetRiddles');
+      const autoSolveBtn = document.getElementById('autoSolve');
+      const gameStatusEl = document.getElementById('gameStatus');
+
+      function buildRiddles(){
+        riddleListEl.innerHTML = '';
+        riddles.forEach((r, i) => {
+          const div = document.createElement('div');
+          div.className = 'riddle';
+          div.id = 'r'+i;
+
+          const q = document.createElement('div');
+          q.textContent = `${i+1}. ${r.q}`;
+          q.style.marginBottom = '6px';
+
+          const row = document.createElement('div');
+          row.className = 'row';
+
+          const inp = document.createElement('input');
+          inp.type = 'text';
+          inp.placeholder = 'Type answer here';
+          inp.id = 'inp'+i;
+
+          const btn = document.createElement('button');
+          btn.textContent = 'Check';
+          btn.addEventListener('click', ()=>checkAnswer(i));
+
+          row.appendChild(inp);
+          row.appendChild(btn);
+
+          div.appendChild(q);
+          div.appendChild(row);
+
+          riddleListEl.appendChild(div);
+        });
+      }
+
+      function checkAnswer(i){
+        const inp = document.getElementById('inp'+i);
+        const val = (inp.value || '').trim().toLowerCase();
+        const options = riddles[i].a.map(x => x.toLowerCase());
+        const el = document.getElementById('r'+i);
+        if(!val){ alert('Please type an answer.'); return; }
+        if(options.includes(val)){
+          if(el.classList.contains('solved')) return;
+          el.classList.add('solved');
+          el.querySelector('input').disabled = true;
+          el.querySelector('button').disabled = true;
+          solved += 1;
+          solvedCountEl.textContent = solved;
+          gameStatusEl.textContent = `Solved ${solved}/${riddles.length} riddles.`;
+
+          if(solved >= 5 && !unlocked){
+            unlockGrid();
+          }
+        } else {
+          alert('Not quite. Try again!');
+        }
+      }
+
+      function unlockGrid(){
+        unlocked = true;
+        gameStatusEl.textContent = 'At least 5 riddles solved! The island is unlocked — dig to find the treasure.';
+        hintEl.textContent = 'Tip: The treasure is hidden somewhere on the island. Click a square to dig.';
+        treasure.x = Math.floor(Math.random()*size)+1;
+        treasure.y = Math.floor(Math.random()*size)+1;
+        for(const c of gridEl.children){
+          c.classList.add('active');
+          c.addEventListener('click', onClickCell);
+          c.tabIndex = 0;
+        }
+      }
+
+      function newGame(){
+        solved = 0; attempts = 0; finished = false; unlocked = false;
+        solvedCountEl.textContent = solved;
+        attemptsEl.textContent = attempts;
+        hintEl.textContent = 'Hint: Solve at least 5 riddles to unlock the island.';
+        gameStatusEl.textContent = 'Game locked until at least 5 riddles are solved.';
+        buildGrid();
+        buildRiddles();
+      }
+
+      function buildGrid(){
+        gridEl.innerHTML = '';
+        gridEl.style.gridTemplateColumns = `repeat(${size}, var(--size))`;
+        for(let y=1;y<=size;y++){
+          for(let x=1;x<=size;x++){
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.x = x;
+            cell.dataset.y = y;
+            cell.title = `(${x},${y})`;
+            cell.textContent = '';
+            gridEl.appendChild(cell);
+          }
+        }
+      }
+
+      function onClickCell(e){
+        if(!unlocked || finished) return;
+        const el = e.currentTarget;
+        const x = Number(el.dataset.x);
+        const y = Number(el.dataset.y);
+        if(el.classList.contains('revealed')) return;
+        attempts += 1;
+        attemptsEl.textContent = attempts;
+
+        if(x === treasure.x && y === treasure.y){
+          el.classList.add('revealed','treasure');
+          el.textContent = '💰';
+          finished = true;
+          hintEl.textContent = `You found the treasure at (${x},${y}) in ${attempts} attempts! 🎉`;
+          gameStatusEl.textContent = 'Victory! You solved at least 5 riddles and found the treasure.';
+          revealAll();
+        } else {
+          el.classList.add('revealed');
+          el.textContent = '×';
+          const horiz = x < treasure.x ? 'EAST' : x > treasure.x ? 'WEST' : '';
+          const vert = y < treasure.y ? 'NORTH' : y > treasure.y ? 'SOUTH' : '';
+          let hintText = '';
+          if(horiz && vert) hintText = `${vert}–${horiz}`;
+          else hintText = horiz || vert || 'very close!';
+          hintEl.textContent = `Hint: Treasure is ${hintText}.`;
+        }
+      }
+
+      function revealAll(){
+        for(const c of gridEl.children){
+          const x = Number(c.dataset.x);
+          const y = Number(c.dataset.y);
+          if(x===treasure.x && y===treasure.y) continue;
+          c.classList.add('revealed');
+          c.style.opacity = 0.7;
+          c.removeEventListener('click', onClickCell);
+        }
+      }
+
+      resetRiddlesBtn.addEventListener('click', ()=>{
+        buildRiddles();
+        solved = 0; solvedCountEl.textContent = solved; unlocked = false;
+        gameStatusEl.textContent = 'Riddles reset. Solve at least 5 to unlock the island.';
+        hintEl.textContent = 'Hint: Solve at least 5 riddles to unlock the island.';
+        for(const c of gridEl.children){ c.classList.remove('active'); c.removeEventListener('click', onClickCell); c.classList.remove('revealed','treasure'); c.style.opacity = 1; c.textContent = ''; }
+      });
+
+      autoSolveBtn.addEventListener('click', ()=>{
+        riddles.forEach((r,i)=>{ document.getElementById('inp'+i).value = r.a[0]; checkAnswer(i); });
+      });
+
+      revealBtn.addEventListener('click', ()=>{
+        if(!unlocked){
+          alert('You must solve at least 5 riddles first.');
+          return;
+        }
+        if(finished) return;
+        finished = true;
+        hintEl.textContent = `Treasure revealed at (${treasure.x},${treasure.y}).`;
+        for(const c of gridEl.children){
+          const x = Number(c.dataset.x);
+          const y = Number(c.dataset.y);
+          if(x===treasure.x && y===treasure.y){ c.classList.add('treasure'); c.textContent = '💰'; }
+          c.classList.add('revealed');
+        }
+        gameStatusEl.textContent = 'Treasure revealed. New Game to play again.';
+      });
+
+      newGameBtn.addEventListener('click', ()=>{
+        newGame();
+      });
+
+      newGame();
+    })();
+  </script>
+</body>
+</html>
