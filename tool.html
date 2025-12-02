@@ -252,7 +252,7 @@
                     <div class="input-group">
                         <label for="filter-expression">Filter Expression (JS Syntax):</label>
                         <input type="text" id="filter-expression" placeholder='e.g., Age > 30 && Country === "Nepal"'>
-                        <p class="warning-text">**Warning:** Uses eval(). Ensure input is safe.</p>
+                        <p class="warning-text">**Warning:** Uses `eval()`. Ensure input is safe.</p>
                     </div>
                     <button id="apply-filter-btn">Apply Filter</button>
                     <button id="download-filtered-btn" disabled>Download Filtered Data</button>
@@ -488,10 +488,10 @@
             });
 
             // If majority are numeric, it's numeric.
-            if (numericCount / n > 0.😎 return 'numeric';
+            if (numericCount / n > 0.8) return 'numeric';
 
             // If majority can be parsed as dates, it's a date.
-            if (dateCount / n > 0.😎 return 'date';
+            if (dateCount / n > 0.8) return 'date';
 
             // Otherwise, it's categorical.
             return 'categorical';
@@ -598,7 +598,7 @@
             // Separate rows based on flags
             rawData.forEach((row, rowIndex) => {
                 if (anomalyFlags[rowIndex]) {
-                    anomalies.push({ ...row, '__Anomaly_Reason': Detected by ${method} in one or more numeric columns. });
+                    anomalies.push({ ...row, '__Anomaly_Reason': `Detected by ${method} in one or more numeric columns.` });
                 } else {
                     normalRows.push(row);
                 }
@@ -639,10 +639,10 @@
                         const keys = Object.keys(context);
                         const values = Object.values(context);
                         // The function body is the user's expression
-                        const filterFn = new Function(...keys, return ${expression});
+                        const filterFn = new Function(...keys, `return ${expression}`);
                         return filterFn(...values);
                     } catch (e) {
-                        document.getElementById('message').textContent = Filter Error: ${e.message};
+                        document.getElementById('message').textContent = `Filter Error: ${e.message}`;
                         document.getElementById('message').classList.remove('hidden');
                         console.error('Filter evaluation error:', e);
                         return false;
@@ -731,7 +731,7 @@
                 if (period === 'daily') {
                     key = dateVal.toISOString().split('T')[0]; // YYYY-MM-DD
                 } else if (period === 'monthly') {
-                    key = ${dateVal.getFullYear()}-${String(dateVal.getMonth() + 1).padStart(2, '0')}; // YYYY-MM
+                    key = `${dateVal.getFullYear()}-${String(dateVal.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
                 } else if (period === 'yearly') {
                     key = String(dateVal.getFullYear()); // YYYY
                 }
@@ -754,7 +754,7 @@
                 data.push(aggregation[key].sum / aggregation[key].count);
             });
 
-            return { labels, data, title: Average ${valueCol} by ${period.charAt(0).toUpperCase() + period.slice(1)} };
+            return { labels, data, title: `Average ${valueCol} by ${period.charAt(0).toUpperCase() + period.slice(1)}` };
         };
 
 
@@ -775,7 +775,7 @@
             const currentHeaders = Object.keys(data[0]);
             let html = '<table><thead><tr>';
             currentHeaders.forEach(h => {
-                html += <th>${h}</th>;
+                html += `<th>${h}</th>`;
             });
             html += '</tr></thead><tbody>';
 
@@ -785,7 +785,7 @@
                     const value = row[h];
                     // Highlight anomaly reason if present
                     const style = h === '__Anomaly_Reason' ? 'style="background-color: #fee2e2; font-weight: 600;"' : '';
-                    html += <td ${style}>${value !== undefined ? value : ''}</td>;
+                    html += `<td ${style}>${value !== undefined ? value : ''}</td>`;
                 });
                 html += '</tr>';
             });
@@ -818,14 +818,14 @@
                         <p><strong>Q1/Q3/IQR:</strong> ${stats.Q1} / ${stats.Q3} / ${stats.IQR}</p>
                     `;
                 } else if (type === 'categorical') {
-                    detailsHtml = <p><strong>Unique Values:</strong> ${stats.unique}</p>;
+                    detailsHtml = `<p><strong>Unique Values:</strong> ${stats.unique}</p>`;
                     // Only show top 5 for brevity
                     const sortedCounts = Object.entries(stats.counts)
                         .sort(([, a], [, b]) => b - a)
                         .slice(0, 5);
                     detailsHtml += '<p><strong>Top Counts:</strong></p><ul>';
                     sortedCounts.forEach(([value, count]) => {
-                        detailsHtml += <li>${value}: ${count}</li>;
+                        detailsHtml += `<li>${value}: ${count}</li>`;
                     });
                     if (stats.unique > 5) detailsHtml += '<li>...and more.</li>';
                     detailsHtml += '</ul>';
@@ -961,7 +961,7 @@
                 for (let i = 0; i < numBins; i++) {
                     const lower = min + i * binSize;
                     const upper = min + (i + 1) * binSize;
-                    labels.push(${lower.toFixed(2)}-${upper.toFixed(2)});
+                    labels.push(`${lower.toFixed(2)}-${upper.toFixed(2)}`);
                 }
 
                 values.forEach(v => {
@@ -974,12 +974,12 @@
 
                 chartData.labels = labels;
                 chartData.datasets.push({
-                    label: Frequency of ${column},
+                    label: `Frequency of ${column}`,
                     data: bins,
                     backgroundColor: var_primary_color
                 });
                 type = 'bar';
-                title = Histogram of ${column};
+                title = `Histogram of ${column}`;
 
             } else if (chartType === 'bar' && dataType === 'categorical') {
                 // Bar chart for categorical data (Value Counts)
@@ -988,12 +988,12 @@
 
                 chartData.labels = sortedEntries.map(([label]) => label);
                 chartData.datasets.push({
-                    label: Count of ${column},
+                    label: `Count of ${column}`,
                     data: sortedEntries.map(([, count]) => count),
                     backgroundColor: var_secondary_color
                 });
                 type = 'bar';
-                title = Counts of ${column};
+                title = `Counts of ${column}`;
             } else {
                 alert('Invalid chart type for the selected column data type.');
                 return;
@@ -1092,7 +1092,7 @@
                     rawData = results.data;
                     // If no headers, generate simple ones (Col1, Col2, ...)
                     if (!hasHeader && rawData.length > 0) {
-                        headers = Object.keys(rawData[0]).map((_, i) => Col${i + 1});
+                        headers = Object.keys(rawData[0]).map((_, i) => `Col${i + 1}`);
                         rawData = rawData.map(row => {
                             const newRow = {};
                             Object.values(row).forEach((v, i) => newRow[headers[i]] = v);
@@ -1120,7 +1120,7 @@
                     analyzeData();
                 },
                 error: function(error) {
-                    messageEl.textContent = Parsing Error: ${error.message};
+                    messageEl.textContent = `Parsing Error: ${error.message}`;
                     messageEl.classList.remove('hidden');
                 }
             });
